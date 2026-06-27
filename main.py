@@ -1,11 +1,51 @@
 import pygame
 import os
 import math
+import copy
 
 pygame.init()
 
 #classes
-class grid():
+
+class GroupCustom:
+    def __init__(self):
+        self.dict = {
+            "object": [],
+            "z-index": []
+        }
+
+    def sortByzIndex(self):#this code is not good in any way, shape, or form
+        end = False
+        while not end:
+            end = True
+            for i in range(len(self.dict["z-index"])):
+                if i + 1 != len(self.dict["z-index"]):
+                    if self.dict["z-index"][i] > self.dict["z-index"][i+1]:
+                        end = False
+                        swapNum = (self.dict["object"][i],self.dict["z-index"][i])
+                        self.dict["object"][i] = self.dict["object"][i+1]
+                        self.dict["object"][i+1] = swapNum[0]
+                        self.dict["z-index"][i] = self.dict["z-index"][i+1]
+                        self.dict["z-index"][i+1] = swapNum[1]
+
+    def add(self,object,zIndex = 0):
+        self.dict["object"].append(object)
+        self.dict["z-index"].append(zIndex)
+        self.sortByzIndex()
+        
+    def __iter__(self):
+        self.index = 0
+        return self
+
+    def __next__(self):
+        if self.index < len(self.dict["object"]):
+            returnValue = self.dict["object"][self.index]
+            self.index += 1
+            return returnValue
+        else:
+            raise StopIteration
+
+class Grid:
         def __init__(self, surface: pygame.Surface,tileSize:int):       
             self.surface = surface
             self.surfaceSize = self.surface.get_size()
@@ -35,12 +75,14 @@ class grid():
                 self.offset[1] += 10
 
 class Background:  #TODO: support for images
-    def __init__(self,grid: grid,image = None):
+    def __init__(self,grid: Grid,image = None,groups = (),zIndex = 0):
         self.image = image
-        self.grid = grid
-        self.drawBG()
+        for group in groups:
+            group.add(self,zIndex)
+        self.updateBG(grid)
 
-    def drawBG(self):
+    def updateBG(self,grid: Grid):
+        self.grid = copy.copy(grid)
         self.tileSize = self.grid.tileSize
         self.surfaceSize = self.grid.surfaceSize
 
@@ -57,15 +99,17 @@ class Background:  #TODO: support for images
             for y in range(tilesOnSurface[1]):
                 self.background.blit(tile,self.grid.getPosFromTile((x,y))) 
 
-    def updateBG(self):
+    def draw(self,window):
         startPosition = self.grid.getPosFromTile((-1,-1))
         trueOffset = [i - math.floor(i/self.tileSize) * self.tileSize for i in self.grid.offset]
         position = [startPosition[index] - trueOffset[index] for index in range(len(startPosition))]
-        self.grid.surface.blit(self.background,position)
+        window.blit(self.background,position)
 
 class SpritesBase(pygame.sprite.Sprite):
-    def __init__(self,image,x,y,width,height,groups = ()):
-        super().__init__(*groups)
+    def __init__(self,image,x,y,width,height,groups = (),zIndex = 0):
+        super().__init__()
+        for group in groups:
+            group.add(self,zIndex)
         self.original_image = image
         self.image = pygame.transform.scale(pygame.image.load(os.path.join(os.path.dirname(os.path.abspath(__file__)),self.original_image)),(width,height))
         self.rect = self.image.get_rect(topleft = (x,y))
@@ -76,13 +120,12 @@ class SpritesBase(pygame.sprite.Sprite):
         else:
             window.blit(self.image,pos)
 
-
 class Sprites(SpritesBase):
-    def __init__(self,image,grid: grid,tilePos:tuple,groups: tuple = ()):
+    def __init__(self,image,grid: Grid,tilePos:tuple,groups: tuple = (),zIndex = 0):
         pos = grid.getPosFromTile(tilePos)
         size = (grid.tileSize,grid.tileSize)
         self.grid = grid 
-        super().__init__(image,pos[0],pos[1],size[0],size[1],groups)
+        super().__init__(image,pos[0],pos[1],size[0],size[1],groups,zIndex)
     
     def draw(self,window, pos=None): # pos=None is just here to remove the error
         originalPosition = [self.rect.left,self.rect.top] # type: ignore , Im too lazy to fix this
@@ -90,16 +133,18 @@ class Sprites(SpritesBase):
         super().draw(window,position)
 
 
-spritesGroup = pygame.sprite.Group()
+spritesGroup = GroupCustom()
 info = pygame.display.Info()
 game_window = pygame.display.set_mode((info.current_w,info.current_h), pygame.RESIZABLE)
 
 pygame.display.set_caption("Game Window")
 
 #objects
-gameGrid=grid(game_window,48)
-player = Sprites("assets/player.png",gameGrid,(4,4),(spritesGroup,))
-gameBG = Background(gameGrid)
+gameGrid=Grid(game_window,48)
+gameBG = Background(gameGrid,None,(spritesGroup,),-10)
+player = Sprites("assets/player.png",gameGrid,(4,4),(spritesGroup,),5)
+
+
 
 #variables
 Pygame_Clock = pygame.time.Clock()
@@ -115,11 +160,19 @@ while not game_cycle_end:
             game_cycle_end = True
         if event.type == pygame.MOUSEBUTTONDOWN:
             print(gameGrid.getTileFromPos(pygame.mouse.get_pos()))
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_v:
+            gameGrid.tileSize += 64
+            print(f"tileSize increased to {gameGrid.tileSize}")
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_b:
+            gameGrid.tileSize -= 64
+            print(f"tileSize decreased to {gameGrid.tileSize}")
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_g:
+            gameBG.updateBG(gameGrid)
+            print(f"grid redraw triggered")
 
     if not game_pause:
         gameGrid.update()
         game_window.fill((255,255,255))
-        gameBG.updateBG()
         for i in spritesGroup:
             i.draw(game_window)
         frames += 1

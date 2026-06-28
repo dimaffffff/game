@@ -176,8 +176,9 @@ class Game:
         pygame.display.set_caption("Game Window")
 
         #groups
-        self.drawGroup = GroupCustom() #for any object with a draw() method
-        self.gridGroup = GroupCustom() #for any object on the gameGrid
+        self.drawGroup =        GroupCustom() #for any object with a draw() method
+        self.gridGroup =        GroupCustom() #for any object on the gameGrid
+        self.ignorePauseGroup = GroupCustom() #for any object that ignores pause
 
         #objects
         self.gameGrid = Grid(self.game_window,64)
@@ -195,31 +196,38 @@ class Game:
 
     def gameLoop(self):
         while not self.game_cycle_end:
-
+            mousepos = pygame.mouse.get_pos()
             for event in pygame.event.get():
 
                 if event.type == pygame.QUIT:
                     self.game_cycle_end = True
 
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:#placeholders to test stuff
+                    self.game_pause = not self.game_pause
+
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    print(self.gameGrid.getTileFromPos(pygame.mouse.get_pos()))
-                    for i in self.gridGroup:
-                        i.onclick(self.gameGrid.getTileFromPos(pygame.mouse.get_pos()),pygame.mouse.get_pos())
-                    print(General.getObjectOnTile(self.gridGroup,self.gameGrid.getTileFromPos(pygame.mouse.get_pos())))
+                    print(self.gameGrid.getTileFromPos(mousepos))
+                    if not self.game_pause:
+                        for i in self.gridGroup:
+                            i.onclick(self.gameGrid.getTileFromPos(mousepos),mousepos)
+                        print(General.getObjectOnTile(self.gridGroup,self.gameGrid.getTileFromPos(mousepos)))
+                    for i in self.ignorePauseGroup:
+                        i.onclick(self.gameGrid.getTileFromPos(mousepos),mousepos)
 
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_v:
-                    self.gameGrid.tileSize += 64
-                    print(f"tileSize increased to {self.gameGrid.tileSize}")
+                if not self.game_pause:
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_v:
+                        self.gameGrid.tileSize += 64
+                        print(f"tileSize increased to {self.gameGrid.tileSize}")
 
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_b:
-                    if self.gameGrid.tileSize - 64 > 0:
-                        self.gameGrid.tileSize -= 64
-                        print(f"tileSize decreased to {self.gameGrid.tileSize}")
-                        
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_g:
-                    for i in self.drawGroup:
-                        i.update()
-                    print(f"grid redraw triggered")
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_b:
+                        if self.gameGrid.tileSize - 64 > 0:
+                            self.gameGrid.tileSize -= 64
+                            print(f"tileSize decreased to {self.gameGrid.tileSize}")
+                            
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_g:
+                        for i in self.drawGroup:
+                            i.update()
+                        print(f"grid redraw triggered")
 
             if not self.game_pause:
                 self.gameGrid.update()
@@ -227,6 +235,8 @@ class Game:
                 for i in self.drawGroup:
                     i.draw(self.game_window)
                 self.frames += 1
+            for i in self.ignorePauseGroup:
+                i.draw(self.game_window)
 
 
             pygame.display.flip() 

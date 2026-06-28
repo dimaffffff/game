@@ -5,12 +5,6 @@ import copy
 import abc
 pygame.init()
 
-info = pygame.display.Info()
-game_window = pygame.display.set_mode((info.current_w,info.current_h))
-
-pygame.display.set_caption("Game Window")
-
-
 class General:
     @staticmethod
     def getObjectOnTile(group,tilePos):
@@ -176,12 +170,17 @@ class Player(Sprites):
 
 class Game:
     def __init__(self):
+        #window
+        info = pygame.display.Info()
+        self.game_window = pygame.display.set_mode((info.current_w,info.current_h))
+        pygame.display.set_caption("Game Window")
+
         #groups
         self.drawGroup = GroupCustom() #for any object with a draw() method
         self.gridGroup = GroupCustom() #for any object on the gameGrid
 
         #objects
-        self.gameGrid = Grid(game_window,64)
+        self.gameGrid = Grid(self.game_window,64)
         self.gameBG =   Background(self.gameGrid,"assets/tile.png",(self.drawGroup,),-10)
         self.player =   Player("assets/player.png",self.gameGrid,(11,6),(self.drawGroup,self.gridGroup),5)
 
@@ -224,9 +223,9 @@ class Game:
 
             if not self.game_pause:
                 self.gameGrid.update()
-                game_window.fill((255,255,255))
+                self.game_window.fill((255,255,255))
                 for i in self.drawGroup:
-                    i.draw(game_window)
+                    i.draw(self.game_window)
                 self.frames += 1
 
 

@@ -113,7 +113,7 @@ class SpritesBase(pygame.sprite.Sprite):
         for group in groups:
             group.add(self,zIndex)
         self.redraw(image,(width,height),(x,y))
-        self.original_image = image
+        self.originalImage = image
 
     @staticmethod
     def loadImage(filePath,size:tuple):
@@ -146,7 +146,7 @@ class Sprites(SpritesBase,abc.ABC):
     def update(self):
         size = (self.grid.tileSize,self.grid.tileSize)
         self.pos = self.grid.getPosFromTile(tuple(self.tilePos))
-        super().redraw(self.original_image,size,self.pos)
+        super().redraw(self.originalImage,size,self.pos)
 
     def draw(self,window, pos=None): # pos=None is just here to remove the error
         originalPosition = [self.rect.left,self.rect.top] # type: ignore , Im too lazy to fix this
@@ -172,7 +172,7 @@ class Game:
     def __init__(self):
         #window
         info = pygame.display.Info()
-        self.game_window = pygame.display.set_mode((info.current_w,info.current_h))
+        self.gameWindow = pygame.display.set_mode((info.current_w,info.current_h))
         pygame.display.set_caption("Game Window")
 
         #groups
@@ -181,40 +181,40 @@ class Game:
         self.ignorePauseGroup = GroupCustom() #for any object that ignores pause
 
         #objects
-        self.gameGrid = Grid(self.game_window,64)
+        self.gameGrid = Grid(self.gameWindow,64)
         self.gameBG =   Background(self.gameGrid,"assets/tile.png",(self.drawGroup,),-10)
         self.player =   Player("assets/player.png",self.gameGrid,(11,6),(self.drawGroup,self.gridGroup),5)
 
 
 
         #variables
-        self.Pygame_Clock = pygame.time.Clock()
-        self.Game_FPS = 60
-        self.game_cycle_end = False
-        self.game_pause = False
+        self.pygameClock = pygame.time.Clock()
+        self.GameFPS = 60
+        self.gameCycleEnd = False
+        self.gamePause = False
         self.frames = 0
 
     def gameLoop(self):
-        while not self.game_cycle_end:
+        while not self.gameCycleEnd:
             mousepos = pygame.mouse.get_pos()
             for event in pygame.event.get():
 
                 if event.type == pygame.QUIT:
-                    self.game_cycle_end = True
+                    self.gameCycleEnd = True
 
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:#placeholders to test stuff
-                    self.game_pause = not self.game_pause
+                    self.gamePause = not self.gamePause
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     print(self.gameGrid.getTileFromPos(mousepos))
-                    if not self.game_pause:
+                    if not self.gamePause:
                         for i in self.gridGroup:
                             i.onclick(self.gameGrid.getTileFromPos(mousepos),mousepos)
                         print(General.getObjectOnTile(self.gridGroup,self.gameGrid.getTileFromPos(mousepos)))
                     for i in self.ignorePauseGroup:
                         i.onclick(self.gameGrid.getTileFromPos(mousepos),mousepos)
 
-                if not self.game_pause:
+                if not self.gamePause:
                     if event.type == pygame.KEYDOWN and event.key == pygame.K_v:
                         self.gameGrid.tileSize += 64
                         print(f"tileSize increased to {self.gameGrid.tileSize}")
@@ -229,19 +229,19 @@ class Game:
                             i.update()
                         print(f"grid redraw triggered")
 
-            if not self.game_pause:
+            if not self.gamePause:
                 self.gameGrid.update()
-                self.game_window.fill((255,255,255))
+                self.gameWindow.fill((255,255,255))
                 for i in self.drawGroup:
-                    i.draw(self.game_window)
+                    i.draw(self.gameWindow)
                 self.frames += 1
             for i in self.ignorePauseGroup:
-                i.draw(self.game_window)
+                i.draw(self.gameWindow)
 
 
             pygame.display.flip() 
 
-            self.Pygame_Clock.tick(self.Game_FPS) 
+            self.pygameClock.tick(self.GameFPS) 
 
         pygame.quit()
 

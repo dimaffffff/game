@@ -207,7 +207,7 @@ class Game:
 
         #variables
         self.pygameClock = pygame.time.Clock()
-        self.GameFPS = 60
+        self.GAMEFPS = 60
         self.gameCycleEnd = False
         self.frames = 0
 
@@ -252,7 +252,7 @@ class Game:
 
             pygame.display.flip() 
 
-            self.pygameClock.tick(self.GameFPS) 
+            self.pygameClock.tick(self.GAMEFPS) 
 
         pygame.quit()
 

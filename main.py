@@ -46,25 +46,25 @@ class GroupCustom:
             raise StopIteration
 
 class Grid:
-        def __init__(self, surface: pygame.Surface,tileSize:int,groups = (),zIndex = 0):
-            General.addToGroups(self,groups,zIndex)
-            self.surface = surface
-            self.surfaceSize = self.surface.get_size()
-            self.tileSize = tileSize
-            self.offset = [0,0]
+    def __init__(self, surface: pygame.Surface,tileSize:int,groups = (),zIndex = 0):
+        General.addToGroups(self,groups,zIndex)
+        self.surface = surface
+        self.surfaceSize = self.surface.get_size()
+        self.tileSize = tileSize
+        self.offset = [0,0]
 
-        def getPosFromTile(self,tile: tuple):
-            return tuple([axis * self.tileSize for axis in tile])
-        
-        def getTileFromPos(self,pos:tuple):
-            pos = [pos[index]-self.offset[index] for index in range(len(pos))]  #type: ignore
-            tile = [axis / self.tileSize for axis in pos]
-            tile = [math.floor(i) for i in tile]
-            return tile
-        
-        def update(self):
-            if self.tileSize <= 0:
-                raise Exception("grid tileSize below zero")
+    def getPosFromTile(self,tile: tuple):
+        return tuple([axis * self.tileSize for axis in tile])
+    
+    def getTileFromPos(self,pos:tuple):
+        pos = [pos[index]-self.offset[index] for index in range(len(pos))]  #type: ignore
+        tile = [axis / self.tileSize for axis in pos]
+        tile = [math.floor(i) for i in tile]
+        return tile
+    
+    def update(self):
+        if self.tileSize <= 0:
+            raise Exception("grid tileSize below zero")
 
 class Background: 
     def __init__(self,grid: Grid,image = None,groups = (),zIndex = 0):

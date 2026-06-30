@@ -3,9 +3,11 @@ import os
 import math
 import copy
 import abc
+import json as JSON
 pygame.init()
 
-class General:
+class Utils:
+    """class for any method that has nowhere else to go"""
     @staticmethod
     def getObjectOnTile(group,tilePos):
         objects = []
@@ -13,15 +15,26 @@ class General:
             if i.onTile(tilePos):
                 objects.append(i)
         return objects
+    
     @staticmethod
     def addToGroups(object,groups,zIndex):
         for group in groups:
             group.add(object,zIndex)
 
+    @staticmethod
+    def jsonGetDictionary(fileName):
+        with open(fileName,"r",encoding="utf-8") as file:
+            return JSON.load(file)
+        
+    @staticmethod
+    def addParents(parents,object):
+        for i in parents:
+            i.addChild(object)
+
 class GroupCustom:
     def __init__(self):
         self.objects=[]
-        self.zIndexes = {}
+        self.zIndexes = {} #the order is: smaller indexes first,bigger indexes later
 
     def sortByzIndex(self):
         def getzIndex(object):
@@ -47,7 +60,7 @@ class GroupCustom:
 
 class Grid:
     def __init__(self, surface: pygame.Surface,tileSize:int,groups = (),zIndex = 0):
-        General.addToGroups(self,groups,zIndex)
+        Utils.addToGroups(self,groups,zIndex)
         self.surface = surface
         self.surfaceSize = self.surface.get_size()
         self.tileSize = tileSize
@@ -68,7 +81,7 @@ class Grid:
 
 class Background: 
     def __init__(self,grid: Grid,image = None,groups = (),zIndex = 0):
-        General.addToGroups(self,groups,zIndex)
+        Utils.addToGroups(self,groups,zIndex)
         self.image = image
         self.gridRef = grid
         self.redraw()
@@ -103,7 +116,7 @@ class Background:
 class Camera:
     '''a class that simplifies interaction with Grid.offset'''
     def __init__(self,grid:Grid,initialCameraPos:tuple,groups = (), zIndex = 0):
-        General.addToGroups(self,groups,zIndex)
+        Utils.addToGroups(self,groups,zIndex)
         self.cameraPos = list(initialCameraPos) #camera position should always be in the center of the screeen
         self.grid = grid
 
@@ -125,11 +138,11 @@ class Camera:
             self.cameraPos[1] -= 10
         if keys[pygame.K_s]:
             self.cameraPos[1] += 10
-            
+
 class SpritesBase:
     def __init__(self,image,x,y,width,height,groups = (),zIndex = 0):
         super().__init__()
-        General.addToGroups(self,groups,zIndex)
+        Utils.addToGroups(self,groups,zIndex)
         self.load(image,(width,height),(x,y))
         self.originalImage = image
 
@@ -186,6 +199,39 @@ class Player(Sprites):
         if tilePos == self.tilePos:
             print("triggered")
 
+class UIBase(abc.ABC):
+    """The base for all ui objects."""
+    def __init__(self,properties):
+        self.size = [0,0]
+        self.properties = Utils.jsonGetDictionary(properties)
+        self.objects = []
+
+    def addChild(self,object):
+        self.objects.append(object)
+
+    @abc.abstractmethod
+    def draw(self,surface,position): #This is an example
+        localSurface = pygame.Surface(self.size, pygame.SRCALPHA)
+        childrenPos = [] #implement your own position logic, the list must be as long as the amount of children the object has
+        localSurface.fill((0, 0, 0, 0))
+        self.drawSelf(localSurface)
+        for index in range(len(self.objects)):
+            self.objects[index].draw(localSurface,childrenPos[index])
+        surface.blit(localSurface,position)
+
+    @abc.abstractmethod
+    def propertyInit(self):
+        pass
+
+    @abc.abstractmethod
+    def getSize(self):  #This is an example
+        for i in self.objects:
+            i.getSize()
+
+    @abc.abstractmethod
+    def drawSelf(self,surface):
+        pass
+
 class Game:
     def __init__(self):
         #window
@@ -222,7 +268,7 @@ class Game:
                     print(self.gameGrid.getTileFromPos(mousepos)) #debug
                     for i in self.gridGroup:
                         i.onclick(self.gameGrid.getTileFromPos(mousepos),mousepos)
-                    print(General.getObjectOnTile(self.gridGroup,self.gameGrid.getTileFromPos(mousepos))) #debug
+                    print(Utils.getObjectOnTile(self.gridGroup,self.gameGrid.getTileFromPos(mousepos))) #debug
 
                 case pygame.KEYDOWN:
 

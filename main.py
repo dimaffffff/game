@@ -211,35 +211,41 @@ class Game:
         self.gameCycleEnd = False
         self.frames = 0
 
-    def gameLoop(self):
-        while not self.gameCycleEnd:
-            mousepos = pygame.mouse.get_pos()
-            for event in pygame.event.get():
-
-                if event.type == pygame.QUIT:
+    def inputs(self):
+        mousepos = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            match event.type:
+                case pygame.QUIT:
                     self.gameCycleEnd = True
 
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    print(self.gameGrid.getTileFromPos(mousepos))
-
+                case pygame.MOUSEBUTTONDOWN:
+                    print(self.gameGrid.getTileFromPos(mousepos)) #debug
                     for i in self.gridGroup:
                         i.onclick(self.gameGrid.getTileFromPos(mousepos),mousepos)
-                    print(General.getObjectOnTile(self.gridGroup,self.gameGrid.getTileFromPos(mousepos)))
+                    print(General.getObjectOnTile(self.gridGroup,self.gameGrid.getTileFromPos(mousepos))) #debug
 
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_v:
-                    self.gameGrid.tileSize += 64
-                    print(f"tileSize increased to {self.gameGrid.tileSize}")
+                case pygame.KEYDOWN:
 
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_b:
-                    if self.gameGrid.tileSize - 64 > 0:
-                        self.gameGrid.tileSize -= 64
-                        print(f"tileSize decreased to {self.gameGrid.tileSize}")
-                        
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_g:
-                    for i in self.drawGroup:
-                        i.redraw()
-                    print(f"grid redraw triggered")
+                    match event.key:
 
+                        case pygame.K_v:
+                            self.gameGrid.tileSize += 64
+                            print(f"tileSize increased to {self.gameGrid.tileSize}")
+
+                        case pygame.K_b:
+                            if self.gameGrid.tileSize - 64 > 0:
+                                self.gameGrid.tileSize -= 64
+                                print(f"tileSize decreased to {self.gameGrid.tileSize}")
+                    
+                        case pygame.K_g:
+                            for i in self.drawGroup:
+                                i.redraw()
+                            print(f"grid redraw triggered")
+
+    def gameLoop(self):
+        while not self.gameCycleEnd:
+
+            self.inputs()
             self.gameGrid.update()
             self.gameWindow.fill((255,255,255))
             for i in self.updateGroup:
@@ -247,8 +253,6 @@ class Game:
             for i in self.drawGroup:
                 i.draw(self.gameWindow)
             self.frames += 1
-
-
 
             pygame.display.flip() 
 

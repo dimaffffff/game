@@ -229,6 +229,14 @@ class UIBase(abc.ABC):
             i.getSize()
 
     @abc.abstractmethod
+    def onclick(self,tilePos,pos):
+        '''this will be called when the player clicks'''
+
+    @abc.abstractmethod
+    def update(self):
+        pass
+
+    @abc.abstractmethod
     def drawSelf(self,surface):
         pass
 
@@ -241,14 +249,14 @@ class Game:
 
         #groups
         self.drawGroup =        GroupCustom() #for objects with draw() method
-        self.gridGroup =        GroupCustom() #for objects on the gameGrid
+        self.clickGroup =        GroupCustom() #for objects with onclick() method
         self.updateGroup =      GroupCustom() #for objects that have logic that is executed every frame
 
         #objects
         self.gameGrid = Grid(self.gameWindow,64,(self.updateGroup,),20)
         self.gameBG =   Background(self.gameGrid,"assets/tile.png",(self.drawGroup,),-10)
         self.playerCam = Camera(self.gameGrid,(0,0),(self.updateGroup,),10)
-        self.player =   Player("assets/player.png",self.gameGrid,(0,0),(self.drawGroup,self.gridGroup),5)
+        self.player =   Player("assets/player.png",self.gameGrid,(0,0),(self.drawGroup,self.clickGroup),5)
         
 
         #variables
@@ -266,9 +274,9 @@ class Game:
 
                 case pygame.MOUSEBUTTONDOWN:
                     print(self.gameGrid.getTileFromPos(mousepos)) #debug
-                    for i in self.gridGroup:
+                    for i in self.clickGroup:
                         i.onclick(self.gameGrid.getTileFromPos(mousepos),mousepos)
-                    print(Utils.getObjectOnTile(self.gridGroup,self.gameGrid.getTileFromPos(mousepos))) #debug
+                    print(Utils.getObjectOnTile(self.clickGroup,self.gameGrid.getTileFromPos(mousepos))) #debug
 
                 case pygame.KEYDOWN:
 

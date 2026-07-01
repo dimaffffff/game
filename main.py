@@ -202,8 +202,9 @@ class Player(Sprites):
 class UI:
     class Base(abc.ABC):
         """The base for all ui objects."""
-        def __init__(self,properties):
+        def __init__(self,properties,position):
             self.size = [0,0]
+            self.position = position
             self.properties = Utils.jsonGetDictionary(properties)
             self.objects = []
             self.propertyInit()
@@ -211,25 +212,47 @@ class UI:
         def addChild(self,object):
             self.objects.append(object)
 
-        def draw(self,surface,position):
-            localSurface = pygame.Surface(self.size, pygame.SRCALPHA)
-            localSurface.fill((0, 0, 0, 0))
-            childrenPos = self.getChildrenPos()
-            self.drawSelf(localSurface)
-            for index in range(len(self.objects)):
-                self.objects[index].draw(localSurface,childrenPos[index])
-            surface.blit(localSurface,position)
+        def draw(self,surface):
+            if self.size[0] > 0 and self.size[1] > 0:
+                localSurface = pygame.Surface(self.size, pygame.SRCALPHA)
+                localSurface.fill((0, 0, 0, 0))
+                childrenPos = self.getChildrenPos()
+                self.drawSelf(localSurface)
+                for index in range(len(self.objects)):
+                    self.objects[index].position = childrenPos[index]
+                    self.objects[index].draw(localSurface)
+                surface.blit(localSurface,self.position)
+
+        def collisionCheck(self,pos):
+            '''checks if a coordinate is in the element bounds'''
+            minPos = self.position
+            maxPos =   [self.position[i] + self.size[i] for i in range(2)]
+            inBounds = [maxPos[i] >= pos[i] >= minPos[i] for i in range(2)]
+            return inBounds[0] and inBounds[1]
+
+        def clickChildren(self,tilePos,pos):
+            if self.collisionCheck(pos):
+                relativePos = [pos[i] - self.position[i] for i in range(2)]
+                for i in self.objects:
+                    i.onclick(tilePos,relativePos)
+                    i.clickChildren(tilePos,relativePos)
+
+        def update(self):
+            self.updateSelf()
+            for i in self.objects:
+                i.update
+
+        @abc.abstractmethod
+        def propertyInit(self):
+            self.BGcolour = self.properties.get("BGcolour",None)
+            self.BGimage = self.properties.get("BGimage",None)
 
         @abc.abstractmethod
         def getChildrenPos(self) -> list[list]:
             pass
 
         @abc.abstractmethod
-        def propertyInit(self):
-            pass
-
-        @abc.abstractmethod
-        def getSize(self):  #This is an example
+        def getSize(self):
             pass
 
         @abc.abstractmethod
@@ -237,11 +260,47 @@ class UI:
             '''this will be called when the player clicks'''
 
         @abc.abstractmethod
-        def update(self):
+        def updateSelf(self):
             pass
 
         @abc.abstractmethod
         def drawSelf(self,surface):
+            pass
+
+    class Container(Base):
+        def __init__(self, properties,position):
+            super().__init__(properties,position)
+            directionIndexDict = {"horizontal":0,"vertical":1}
+            self.directionIndex = directionIndexDict[self.direction]
+            self.otherDirectionIndex = int(not self.directionIndex)
+
+        def propertyInit(self):
+            super().propertyInit()
+            self.direction = self.properties.get("direction","horizontal")
+            self.spacing = self.properties.get("spacing",0)
+            self.maxElements = self.properties.get("maxElements",-1) #TODO
+
+        def getSize(self):
+            self.size = [0,0]
+            for i in self.objects:
+                i.getSize()
+                self.size[self.directionIndex] += i.size[self.directionIndex] + self.spacing
+                if self.size[self.otherDirectionIndex] < i.size[self.otherDirectionIndex]:
+                    self.size[self.otherDirectionIndex] = i.size[self.otherDirectionIndex]
+            self.size[self.directionIndex] -= self.spacing
+
+        def getChildrenPos(self) -> list[list]:
+            positions = [[0,0]]
+            for i in range(1,len(self.objects)):
+                positions.append(positions[-1].copy())
+                positions[-1][self.directionIndex] += self.objects[i-1].size[self.directionIndex] + self.spacing
+                #TODO: wrapping
+            return positions
+        
+        def onclick(self, tilePos, pos):
+            pass
+
+        def updateSelf(self):
             pass
 
 class Game:

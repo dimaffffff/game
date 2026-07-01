@@ -237,6 +237,12 @@ class UI:
                     i.onclick(tilePos,relativePos)
                     i.clickChildren(tilePos,relativePos)
 
+        def drawSelf(self,surface):
+            if self.BGcolour != None:
+                surface.fill(self.BGcolour)
+            if self.BGimage != None:
+                surface.blit(SpritesBase.loadImage(self.BGimage,surface.get_size()))
+
         def update(self):
             self.updateSelf()
             for i in self.objects:
@@ -261,10 +267,6 @@ class UI:
 
         @abc.abstractmethod
         def updateSelf(self):
-            pass
-
-        @abc.abstractmethod
-        def drawSelf(self,surface):
             pass
 
     class Container(Base):
@@ -296,7 +298,7 @@ class UI:
                 positions[-1][self.directionIndex] += self.objects[i-1].size[self.directionIndex] + self.spacing
                 #TODO: wrapping
             return positions
-        
+
         def onclick(self, tilePos, pos):
             pass
 

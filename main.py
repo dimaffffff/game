@@ -254,19 +254,16 @@ class UI:
             self.BGimage = self.properties.get("BGimage",None)
 
         @abc.abstractmethod
-        def getChildrenPos(self) -> list[list]:
-            pass
-
-        @abc.abstractmethod
         def getSize(self):
             pass
 
-        @abc.abstractmethod
-        def onclick(self,tilePos,pos):
+        def getChildrenPos(self) -> list[list]: #overwrite this for elements with multi-element positioning
+            return [[0,0]]
+
+        def onclick(self,tilePos,pos): #overwrite this for interactive elements
             '''this will be called when the player clicks'''
 
-        @abc.abstractmethod
-        def updateSelf(self):
+        def updateSelf(self): #overwrite this for non-static elements
             pass
 
     class Container(Base):
@@ -298,12 +295,6 @@ class UI:
                 positions[-1][self.directionIndex] += self.objects[i-1].size[self.directionIndex] + self.spacing
                 #TODO: wrapping
             return positions
-
-        def onclick(self, tilePos, pos):
-            pass
-
-        def updateSelf(self):
-            pass
 
 class Game:
     def __init__(self):

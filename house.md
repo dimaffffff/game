@@ -3,7 +3,7 @@
 ## Base
 
 - BGcolour: The background colour of the element.
-- BGimage: A path to an image to use as the background of the element, overwrites BGcolour.
+- BGimage: A path to an image to use as the background of the element.
 
 ## Container  
 

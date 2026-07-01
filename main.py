@@ -240,7 +240,7 @@ class UI:
         def update(self):
             self.updateSelf()
             for i in self.objects:
-                i.update
+                i.update()
 
         @abc.abstractmethod
         def propertyInit(self):

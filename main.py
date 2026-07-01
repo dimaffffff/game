@@ -199,46 +199,50 @@ class Player(Sprites):
         if tilePos == self.tilePos:
             print("triggered")
 
-class UIBase(abc.ABC):
-    """The base for all ui objects."""
-    def __init__(self,properties):
-        self.size = [0,0]
-        self.properties = Utils.jsonGetDictionary(properties)
-        self.objects = []
+class UI:
+    class Base(abc.ABC):
+        """The base for all ui objects."""
+        def __init__(self,properties):
+            self.size = [0,0]
+            self.properties = Utils.jsonGetDictionary(properties)
+            self.objects = []
+            self.propertyInit()
 
-    def addChild(self,object):
-        self.objects.append(object)
+        def addChild(self,object):
+            self.objects.append(object)
 
-    @abc.abstractmethod
-    def draw(self,surface,position): #This is an example
-        localSurface = pygame.Surface(self.size, pygame.SRCALPHA)
-        childrenPos = [] #implement your own position logic, the list must be as long as the amount of children the object has
-        localSurface.fill((0, 0, 0, 0))
-        self.drawSelf(localSurface)
-        for index in range(len(self.objects)):
-            self.objects[index].draw(localSurface,childrenPos[index])
-        surface.blit(localSurface,position)
+        def draw(self,surface,position):
+            localSurface = pygame.Surface(self.size, pygame.SRCALPHA)
+            localSurface.fill((0, 0, 0, 0))
+            childrenPos = self.getChildrenPos()
+            self.drawSelf(localSurface)
+            for index in range(len(self.objects)):
+                self.objects[index].draw(localSurface,childrenPos[index])
+            surface.blit(localSurface,position)
 
-    @abc.abstractmethod
-    def propertyInit(self):
-        pass
+        @abc.abstractmethod
+        def getChildrenPos(self) -> list[list]:
+            pass
 
-    @abc.abstractmethod
-    def getSize(self):  #This is an example
-        for i in self.objects:
-            i.getSize()
+        @abc.abstractmethod
+        def propertyInit(self):
+            pass
 
-    @abc.abstractmethod
-    def onclick(self,tilePos,pos):
-        '''this will be called when the player clicks'''
+        @abc.abstractmethod
+        def getSize(self):  #This is an example
+            pass
 
-    @abc.abstractmethod
-    def update(self):
-        pass
+        @abc.abstractmethod
+        def onclick(self,tilePos,pos):
+            '''this will be called when the player clicks'''
 
-    @abc.abstractmethod
-    def drawSelf(self,surface):
-        pass
+        @abc.abstractmethod
+        def update(self):
+            pass
+
+        @abc.abstractmethod
+        def drawSelf(self,surface):
+            pass
 
 class Game:
     def __init__(self):

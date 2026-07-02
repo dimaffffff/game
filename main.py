@@ -6,6 +6,26 @@ import abc
 import json as JSON
 pygame.init()
 
+class ImageLoading():
+    def __init__(self):
+        self.cachedImages = {}
+        self.cachedImageSizes = {}
+
+    def cacheImage(self,filePath):
+        self.cachedImages[filePath] = pygame.image.load(os.path.join(os.path.dirname(os.path.abspath(__file__)),filePath))
+
+    def cacheSize(self,filePath,size):
+        self.cachedImageSizes[(filePath,size)] = pygame.transform.scale(self.cachedImages[filePath],size)
+
+    def loadImage(self,filePath,size:tuple):
+        if filePath not in self.cachedImages:
+            self.cacheImage(filePath)
+        if (filePath,size) not in self.cachedImageSizes:
+            self.cacheSize(filePath,size)
+        return self.cachedImageSizes[(filePath,size)]
+    
+imgLoading = ImageLoading()
+
 class Utils:
     """class for any method that has nowhere else to go"""
     @staticmethod
@@ -101,7 +121,7 @@ class Background:
             tile.fill((255,255,255))
             pygame.draw.rect(tile,"red",pygame.Rect((0,0),(self.tileSize,self.tileSize)),int(self.tileSize/32))
         else:
-            tile = SpritesBase.loadImage(self.image,(self.tileSize,self.tileSize))
+            tile = imgLoading.loadImage(self.image,(self.tileSize,self.tileSize))
 
         for x in range(tilesOnSurface[0]):
             for y in range(tilesOnSurface[1]):
@@ -146,17 +166,8 @@ class SpritesBase:
         self.load(image,(width,height),(x,y))
         self.originalImage = image
 
-    @staticmethod
-    def loadImage(filePath,size:tuple):
-        return pygame.transform.scale(
-            pygame.image.load(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)),filePath)
-                ),
-            size
-        )
-
     def load(self,filename,size:tuple,pos:tuple):
-        self.image = self.loadImage(filename,size)
+        self.image = imgLoading.loadImage(filename,size)
         
         self.rect = self.image.get_rect(topleft = pos)
 
@@ -199,29 +210,33 @@ class Player(Sprites):
         if tilePos == self.tilePos:
             print("triggered")
 
-class UI:
-    class Base(abc.ABC):
+class UISimple:
+    class Base(): 
         """The base for all ui objects."""
-        def __init__(self,properties,position):
+        def __init__(self,position = [0,0],parents = [],properties = "default.json",groups = (),zIndex = 0):
+            Utils.addParents(parents,self)
+            Utils.addToGroups(self,groups,zIndex)
             self.size = [0,0]
             self.position = position
             self.properties = Utils.jsonGetDictionary(properties)
             self.objects = []
+            self.localSurface = None
             self.propertyInit()
 
         def addChild(self,object):
             self.objects.append(object)
 
-        def draw(self,surface):
+        def draw(self,surface):#optimise this entire function by caching stuff if you notice a frame drop when working with UIs
             if self.size[0] > 0 and self.size[1] > 0:
-                localSurface = pygame.Surface(self.size, pygame.SRCALPHA)
-                localSurface.fill((0, 0, 0, 0))
+                if self.localSurface == None or self.localSurface.get_size() != self.size :
+                    self.localSurface = pygame.Surface(self.size, pygame.SRCALPHA)
+                self.localSurface.fill((0, 0, 0, 0)) 
                 childrenPos = self.getChildrenPos()
-                self.drawSelf(localSurface)
+                self.drawSelf(self.localSurface)
                 for index in range(len(self.objects)):
                     self.objects[index].position = childrenPos[index]
-                    self.objects[index].draw(localSurface)
-                surface.blit(localSurface,self.position)
+                    self.objects[index].draw(self.localSurface)
+                surface.blit(self.localSurface,self.position)
 
         def collisionCheck(self,pos):
             '''checks if a coordinate is in the element bounds'''
@@ -230,45 +245,58 @@ class UI:
             inBounds = [maxPos[i] >= pos[i] >= minPos[i] for i in range(2)]
             return inBounds[0] and inBounds[1]
 
-        def clickChildren(self,tilePos,pos):
-            if self.collisionCheck(pos):
-                relativePos = [pos[i] - self.position[i] for i in range(2)]
-                for i in self.objects:
-                    i.onclick(tilePos,relativePos)
-                    i.clickChildren(tilePos,relativePos)
-
         def drawSelf(self,surface):
             if self.BGcolour != None:
                 surface.fill(self.BGcolour)
             if self.BGimage != None:
-                surface.blit(SpritesBase.loadImage(self.BGimage,surface.get_size()))
+                surface.blit(imgLoading.loadImage(self.BGimage,surface.get_size()),(0,0))
 
         def update(self):
             self.updateSelf()
             for i in self.objects:
                 i.update()
 
-        @abc.abstractmethod
-        def propertyInit(self):
+        def onclick(self,tilePos,pos): 
+            '''this will be called when the player clicks'''
+            if self.collisionCheck(pos):
+                relativePos = [pos[i] - self.position[i] for i in range(2)]
+                for i in self.objects:
+                    i.onclick(tilePos,relativePos)
+                self.selfClick(pos)
+
+        def propertyInit(self):#overwrite this, no exceptions, I dont really want to use abc on UI
             self.BGcolour = self.properties.get("BGcolour",None)
             self.BGimage = self.properties.get("BGimage",None)
+            self.minSize = self.properties.get("minSize",[0,0])
 
-        @abc.abstractmethod
-        def getSize(self):
-            pass
+        def getSize(self):  
+            self.size = self.minSize
+            for i in self.objects:
+                i.getSize()
+            self.selfGetSize()
+            for i in range(2):
+                if self.size[i] < self.minSize[i]:
+                    self.size[i] = self.minSize[i]
+
+        def selfGetSize(self): #overwrite this for elements with multiple elements
+            for i in self.objects: # i really didn't want to use an if here
+                self.size = i.size
 
         def getChildrenPos(self) -> list[list]: #overwrite this for elements with multi-element positioning
             return [[0,0]]
-
-        def onclick(self,tilePos,pos): #overwrite this for interactive elements
-            '''this will be called when the player clicks'''
+            
+        def selfClick(self,pos): #overwrite this for interactive elements
+            '''this will be called when the player clicks on the element'''
 
         def updateSelf(self): #overwrite this for non-static elements
             pass
 
+        def redraw(self): #here so i can put it into drawGroup
+            pass
+
     class Container(Base):
-        def __init__(self, properties,position):
-            super().__init__(properties,position)
+        def __init__(self,position = [0,0],parents=[], properties = "default.json",groups = (),zIndex = 0):
+            super().__init__(position,parents,properties,groups,zIndex)
             directionIndexDict = {"horizontal":0,"vertical":1}
             self.directionIndex = directionIndexDict[self.direction]
             self.otherDirectionIndex = int(not self.directionIndex)
@@ -277,9 +305,8 @@ class UI:
             super().propertyInit()
             self.direction = self.properties.get("direction","horizontal")
             self.spacing = self.properties.get("spacing",0)
-            self.maxElements = self.properties.get("maxElements",-1) #TODO
 
-        def getSize(self):
+        def selfGetSize(self):
             self.size = [0,0]
             for i in self.objects:
                 i.getSize()
@@ -293,8 +320,18 @@ class UI:
             for i in range(1,len(self.objects)):
                 positions.append(positions[-1].copy())
                 positions[-1][self.directionIndex] += self.objects[i-1].size[self.directionIndex] + self.spacing
-                #TODO: wrapping
             return positions
+
+    class Button(Base):
+        def __init__(self,funcOnClick, position = [0,0],parents=[], properties = "default.json",groups = (),zIndex = 0):
+            super().__init__(position,parents,properties,groups,zIndex)
+            self.funcOnClick = funcOnClick
+
+        def propertyInit(self):#placeholder
+             super().propertyInit()
+
+        def selfClick(self,pos):
+            self.funcOnClick(self)
 
 class Game:
     def __init__(self):
@@ -304,16 +341,24 @@ class Game:
         pygame.display.set_caption("Game Window")
 
         #groups
-        self.drawGroup =        GroupCustom() #for objects with draw() method
-        self.clickGroup =        GroupCustom() #for objects with onclick() method
-        self.updateGroup =      GroupCustom() #for objects that have logic that is executed every frame
+        self.drawGroup =   GroupCustom() #for objects with draw() method
+        self.clickGroup =  GroupCustom() #for objects with onclick() method
+        self.updateGroup = GroupCustom() #for objects that have logic that is executed every frame
+        self.gridGroup =   GroupCustom() #for objects on grid
 
         #objects
         self.gameGrid = Grid(self.gameWindow,64,(self.updateGroup,),20)
         self.gameBG =   Background(self.gameGrid,"assets/tile.png",(self.drawGroup,),-10)
         self.playerCam = Camera(self.gameGrid,(0,0),(self.updateGroup,),10)
-        self.player =   Player("assets/player.png",self.gameGrid,(0,0),(self.drawGroup,self.clickGroup),5)
-        
+        self.player =   Player("assets/player.png",self.gameGrid,(0,0),(self.drawGroup,self.clickGroup,self.gridGroup),5)
+
+        #UI
+        self.UIscreen = UISimple.Container(groups=(self.drawGroup,self.clickGroup),zIndex=232)
+        self.buttontainer = UISimple.Container(parents=[self.UIscreen],properties="PropertiesUI/container.json" )
+        self.button = UISimple.Button(funcOnClick=print, parents=[self.buttontainer], properties="PropertiesUI/button.json")
+        self.button2 = UISimple.Button(funcOnClick=print, parents=[self.buttontainer], properties="PropertiesUI/button.json")
+
+        self.UIscreen.getSize()
 
         #variables
         self.pygameClock = pygame.time.Clock()
@@ -332,7 +377,6 @@ class Game:
                     print(self.gameGrid.getTileFromPos(mousepos)) #debug
                     for i in self.clickGroup:
                         i.onclick(self.gameGrid.getTileFromPos(mousepos),mousepos)
-                    print(Utils.getObjectOnTile(self.clickGroup,self.gameGrid.getTileFromPos(mousepos))) #debug
 
                 case pygame.KEYDOWN:
 
